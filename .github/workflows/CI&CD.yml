@@ -18,3 +18,29 @@ jobs:
         run: | 
           chmod +x gradlew
           ./gradlew build
+
+      - name: 현재 시간 구하기
+        uses: 1466587594/get-current-time@v2
+        id: current-time
+        with:
+          format: YYYY-MM-DDTHH-mm-ss
+          utcOffset: +09:00
+
+      - name: 배포 폴더 생성
+        run: |
+          mkdir -p deploy
+          cp build/libs/*.jar deploy/application.jar
+          cp infra/Dockerfile deploy
+          cd deploy && zip -r ../deploy.zip .
+
+      - name: EB 배포
+        uses: einaregilsson/beanstalk-deploy@v20
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          application_name: checkmate
+          environment_name: checkmate-env
+          version_label: checkmate-${{ steps.current-time.outputs.formattedTime }}
+          region: ap-northeast-2
+          wait_for_deployment: false
+          deployment_package: deploy.zip
